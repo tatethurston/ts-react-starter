@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+shopt -s nullglob globstar
+
+function log() {
+  echo "[s3-deploy]" - "$(date)" - "$1"
+}
+
+log "Gzipping assets..."
+gzip --best dist/*.html dist/*.js dist/*.css
+# remove .gz extension
+for f in dist/*.gz; do
+  mv $f ${f%.gz}
+done
+
+log "Uploading to \"$S3_BUCKET\"..."
+
+# HTML
+aws s3 sync dist/ "$S3_BUCKET" \
+  --exclude "*" \
+  --include "*.html" \
+  --content-type "text/html" \
+  --content-encoding "gzip" \
+  --cache-control "no-cache" \
+
+# JS
+aws s3 sync dist/ "$S3_BUCKET" \
+  --exclude "*" \
+  --include "*.js" \
+  --content-type "application/javascript" \
+  --content-encoding "gzip" \
+  --cache-control "public, max-age=86400" \
+
+# CSS
+aws s3 sync dist/ "$S3_BUCKET" \
+  --exclude "*" \
+  --include "*.css" \
+  --content-type "text/css" \
+  --content-encoding "gzip" \
+  --cache-control "public, max-age=86400" \
+
+log "Deployed."
+
